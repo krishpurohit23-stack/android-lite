@@ -5,6 +5,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-latest
@@ -101,6 +104,17 @@ jobs:
           /usr/libexec/PlistBuddy -c "Delete :UIBackgroundModes" "$PLIST" 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Add :UIBackgroundModes array" -c "Add :UIBackgroundModes:0 string audio" "$PLIST"
           zip -qr AndroidLite.ipa Payload
+
+      - name: Publish IPA to Releases (direct .ipa download, no zip)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" AndroidLite.ipa \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Android Lite build ${{ github.run_number }}" \
+            --notes "Download AndroidLite.ipa below and install it with SideStore." \
+            --latest
 
       - uses: actions/upload-artifact@v4
         with:
