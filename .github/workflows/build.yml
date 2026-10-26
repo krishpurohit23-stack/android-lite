@@ -1,3 +1,4 @@
+
 name: Build IPA
 
 on:
@@ -17,25 +18,36 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Prepare sources (unzip AndroidLite.zip if it is newer)
+      - name: Prepare sources (prefer Build 21 ZIP when present)
         run: |
           set -e
-          if [ -f AndroidLite.zip ]; then
-            rm -rf _unz && mkdir _unz && unzip -q AndroidLite.zip -d _unz
+          ZIP_FILE=""
+          if [ -f AndroidLite_UI_Polish_Build21.zip ]; then
+            ZIP_FILE="AndroidLite_UI_Polish_Build21.zip"
+          elif [ -f AndroidLite.zip ]; then
+            ZIP_FILE="AndroidLite.zip"
+          fi
+
+          if [ -n "$ZIP_FILE" ]; then
+            rm -rf _unz && mkdir _unz && unzip -q "$ZIP_FILE" -d _unz
             ZB=$(grep -rho "ANDROID_LITE_BUILD=[0-9]*" _unz/Sources 2>/dev/null | head -1 | cut -d= -f2)
             RB=$(grep -rho "ANDROID_LITE_BUILD=[0-9]*" Sources 2>/dev/null | head -1 | cut -d= -f2)
             ZB=${ZB:-0}
             RB=${RB:-0}
-            echo "zip build=$ZB, repo Sources build=$RB"
+            echo "ZIP=$ZIP_FILE, zip build=$ZB, repo Sources build=$RB"
             if [ "$ZB" -ge "$RB" ]; then
               rm -rf Sources scripts
               cp -R _unz/Sources Sources
               if [ -d _unz/scripts ]; then cp -R _unz/scripts scripts; fi
               if [ -f _unz/CLAUDE.md ]; then cp _unz/CLAUDE.md CLAUDE.md; fi
+              if [ -f _unz/PIXEL_CHECKLIST.md ]; then cp _unz/PIXEL_CHECKLIST.md PIXEL_CHECKLIST.md; fi
+            else
+              echo "Repository Sources are newer; keeping existing sources."
             fi
           fi
+
           if [ ! -d Sources ]; then
-            echo "ERROR: no Sources folder and no AndroidLite.zip in the repo root"
+            echo "ERROR: no Sources folder and no recognized source ZIP in the repo root"
             ls
             exit 1
           fi
@@ -99,6 +111,7 @@ jobs:
                   PRODUCT_NAME: AndroidLite
                   GENERATE_INFOPLIST_FILE: YES
                   INFOPLIST_KEY_CFBundleDisplayName: Android Lite
+                  INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
                   INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
                   INFOPLIST_KEY_UILaunchScreen_Generation: YES
                   INFOPLIST_KEY_UIStatusBarHidden: YES
